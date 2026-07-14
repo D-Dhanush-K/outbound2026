@@ -44,6 +44,90 @@ const groupBgStyles = [
   "bg-cyan-50/50 border-cyan-100 hover:bg-cyan-50/80",
 ];
 
+const roomClusterStyles = [
+  "bg-teal-50/50 border-teal-100 hover:bg-teal-50/80",
+  "bg-amber-50/50 border-amber-100 hover:bg-amber-50/80",
+  "bg-sky-50/50 border-sky-100 hover:bg-sky-50/80",
+  "bg-purple-50/40 border-purple-100 hover:bg-purple-50/70",
+  "bg-emerald-50/50 border-emerald-100 hover:bg-emerald-50/80",
+];
+
+export function RoomAllocationDropdown({ rooms = [], loading, label = "View Room Sharing Details" }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const filteredRooms = (rooms || []).filter(p => 
+    (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (p.roomLabel || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="mt-3 space-y-2">
+      <button 
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        disabled={loading}
+        className="flex items-center justify-between w-full p-3 bg-stone-50 hover:bg-stone-100/70 border border-stone-200 rounded-xl text-stone-800 font-bold text-xs cursor-pointer focus:outline-none transition-colors shadow-sm"
+      >
+        <span className="flex items-center gap-3">
+          <i className="fa-solid fa-bed text-base text-stone-600"></i>
+          <span className="text-left">
+            <p className="uppercase tracking-wide">{loading ? 'Loading layouts...' : label}</p>
+            <p className="text-[11px] text-stone-500 font-normal">Click to see roommates and map allocations</p>
+          </span>
+        </span>
+        <i className={`fa-solid ${isOpen ? 'fa-chevron-up' : 'fa-chevron-down'} text-xs opacity-70`}></i>
+      </button>
+
+      {isOpen && (
+        <div className="bg-white border border-stone-200 rounded-xl p-3 max-h-96 overflow-y-auto space-y-2.5 shadow-md animate-fadeIn">
+          <div className="relative">
+            <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-[11px] text-stone-400"></i>
+            <input 
+              type="text" 
+              placeholder="Search by name or room number..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-stone-50 border border-stone-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-stone-800 focus:outline-none focus:border-stone-400"
+            />
+          </div>
+          
+          <div className="space-y-1.5">
+            {filteredRooms.length > 0 ? (
+              filteredRooms.map((member, index) => {
+                const clusterStyle = roomClusterStyles[member.groupIndex % roomClusterStyles.length];
+                const primaryBorder = member.isRoomPrimary ? "border-l-4 border-l-stone-600" : "";
+
+                return (
+                  <div 
+                    key={index} 
+                    className={`flex items-center justify-between p-3 rounded-xl border transition-colors text-xs gap-1.5 ${clusterStyle} ${primaryBorder}`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="h-1.5 w-1.5 rounded-full bg-stone-400"></span>
+                      <span className={`tracking-wide ${member.isRoomPrimary ? 'font-black text-stone-900' : 'text-stone-700 font-medium'}`}>
+                        {member.name}
+                      </span>
+                    </div>
+                    
+                    <span className="text-stone-800 font-mono font-black bg-white px-2 py-0.5 rounded border border-stone-200 text-[11px] min-w-[70px] text-center shadow-sm">
+                      🏠 {member.roomLabel}
+                    </span>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-[11px] text-stone-400 text-center py-4 bg-stone-50 rounded-lg">
+                No room assignments found
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function TransitGroupDropdown({ groups = [], loading }) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -228,19 +312,22 @@ export function Day1Section({ passengers = [], groups = [], loading }) {
   );
 }
 
-export function Day2Section() {
+export function Day2Section({ qStartRooms = [], wildPlanetRooms = [], loading }) {
   const resortActivities = [
     { name: "🪂 Zipline", detail: "₹400 per Head (3:00 PM - 6:30 PM)" },
     { name: "🏊 Swimming Pool", detail: "8:00 AM - 8:00 PM" },
-    { name: "🛶 Fishing & Kayaking", detail: "3:00 PM - 6:00 PM (Weather permitting)" },
+    { name: "🛶 Fishing & Kayaking", detail: "3:00 PM - 6:00 PM (If Weather permits)" },
     { name: "🎮 Indoor Activities", detail: "TT, Hand Soccer, Snooker & Board Games (8:00 AM - 10:00 PM)" },
     { name: "🏸 Outdoor Sports", detail: "Badminton, Football, Cricket, Basketball (8:00 AM - 6:00 PM)" },
   ];
+  
 
   return (
     <DayLayout date="16th July" subtitle="Thursday" indicatorColor="bg-emerald-600">
       <EventCard time="6:40 AM" title="Mysore Railway Station Arrival 🚂" description="Exit the station and head to the boarding point. 2 Buses (24-Seater capacity each) are ready for transit." />
-      <EventCard time="7:30 AM" title="Check-in: Q Start Hotel Mysore 🏨" description="10 Rooms allocated for quick refreshment, Available strictly from 7:30 AM to 9:00 AM." />
+      <EventCard time="7:30 AM" title="Check-in: Q Start Hotel Mysore 🏨" description="Rooms allocated for refreshing. Available from 7:30 AM to 9:00 AM.">
+        <RoomAllocationDropdown rooms={qStartRooms} loading={loading} label="Q Start Room Allocation" />
+      </EventCard>
       <EventCard time="9:00 AM - 9:45 AM" title="Buffet Breakfast 🥞" description="Served at Q Start Hotel Mysore." />
       <EventCard 
   time="9:45 AM - 10:00 AM" 
@@ -253,7 +340,9 @@ export function Day2Section() {
   description="A quick break for refreshments during our transit from Mysore to Nilgiris." 
   badgeColor="bg-stone-100 border-stone-200 text-stone-600" 
 />
-      <EventCard time="1:30 PM" title="Arrival at Wild Planet Resort & Check-in 🏡" description="Standard check-in initialized. 14 rooms allocated for our group stay." />
+      <EventCard time="1:30 PM" title="Arrival at Resort & Check-in 🏡" description="Standard check-in initialized. Group stay rooms allocated below.">
+        <RoomAllocationDropdown rooms={wildPlanetRooms} loading={loading} label="Wild Planet Room Allocation" />
+      </EventCard>
       <EventCard time="2:00 PM - 3:00 PM" title="Grand Lunch Buffet 🍱" />
       <EventCard time="2:30 PM - 4:30 PM" title="Leisure & Resort Amenities — Slot 1 ✨" description="Time to explore the natural surroundings and available resort facilities:" badgeColor="bg-purple-50 border-purple-200 text-purple-900">
         <div className="grid grid-cols-1 gap-1.5 mt-2 bg-stone-50 p-3 rounded-xl border border-stone-200/60 text-[11px] shadow-inner">
@@ -281,7 +370,7 @@ export function Day2Section() {
 export function Day3Section() {
   const afternoonAmenities = [
     { name: "🏊 Swimming Pool", detail: "8:00 AM - 8:00 PM" },
-    { name: "🛶 Fishing & Kayaking", detail: "3:00 PM - 6:00 PM (Weather permitting)" },
+    { name: "🛶 Fishing & Kayaking", detail: "3:00 PM - 6:00 PM (If Weather permits)" },
     { name: "🎮 Indoor Activities", detail: "TT, Hand Soccer, Snooker & Board Games (8:00 AM - 10:00 PM)" },
     { name: "🏸 Outdoor Sports", detail: "Badminton, Football, Cricket, Basketball (8:00 AM - 6:00 PM)" },
   ];
@@ -318,7 +407,7 @@ export function Day3Section() {
         </div>
       </EventCard>
       <EventCard time="4:30 PM - 5:00 PM" title="High Tea with Snacks ☕" />
-      <EventCard time="5:00 PM - 5:30 PM" title="Quick Refreshment 🍹" badgeColor="bg-stone-100 border-stone-200 text-stone-600">
+      <EventCard time="5:00 PM - 5:30 PM" title="Quick Refreshment" badgeColor="bg-stone-100 border-stone-200 text-stone-600">
   <div className="text-xs bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl p-3 flex gap-2.5 font-medium shadow-sm">
     <i className="fa-solid fa-user-astronaut text-emerald-700 text-sm mt-0.5"></i>
     <p><strong>Cocktail Theme Dress Code:</strong> Please change into your Pistachio Green attire before the evening events begin!</p>
@@ -347,6 +436,16 @@ export function Day4Section({ passengers, loading }) {
     { name: "🏸 Outdoor Sports", detail: "Badminton, Football, Cricket, Basketball (8:00 AM - 6:00 PM)" },
   ];
 
+  const mystryhotelmenu = [
+    { name: "Soup" },
+    { name: "Chappathi"},
+    { name: "Chicken Stew"},
+    { name: "Veg Curry" },
+    { name: "Fish Curry Meals with Fish fry (Ponni rice)"},
+    { name: "Chiken Biriyani"},
+    { name: "Sambar, Poriyal, Aviyal, Rasam, Payasam, Fish Curry, Chamanthi, Podi, Pickle"},
+  ];
+
   return (
     <DayLayout date="18th July" subtitle="Saturday" indicatorColor="bg-rose-600">
       <EventCard time="8:00 AM - 10:00 AM" title="Morning Breakfast Buffet 🥞" badgeColor="bg-rose-50 border-rose-200 text-rose-900" />
@@ -361,7 +460,15 @@ export function Day4Section({ passengers, loading }) {
         </div>
       </EventCard>
       <EventCard time="12:00 PM" title="Resort Checkout 🔑" description="Pack up your belongings, complete room handovers, and assemble at the main exit area." badgeColor="bg-rose-50 border-rose-200 text-rose-900" />
-      <EventCard time="1:00 PM" title="Lunch at Misty Restaurant 🍽️" description="Group lunch gathering at the restaurant before the transit route begins." badgeColor="bg-rose-50 border-rose-200 text-rose-900" />
+      <EventCard time="1:00 PM" title="Lunch at Misty Restaurant 🍽️" description="Group lunch gathering at the restaurant before the transit route begins." badgeColor="bg-rose-50 border-rose-200 text-rose-900" >
+        <div className="grid grid-cols-1 gap-1.5 mt-2 bg-stone-50 p-3 rounded-xl border border-stone-200/60 text-[11px] shadow-inner">
+          {mystryhotelmenu.map((act, i) => (
+            <div key={i} className="flex justify-between border-b border-stone-200/60 pb-1 last:border-0 last:pb-0">
+              <span className="font-bold text-stone-700">{act.name}</span>
+            </div>
+          ))}
+        </div>
+      </EventCard>
       <EventCard time="Afternoon Transit" title="Sightseeing on the way to Mysore Station 🗺️" description="Exploring localized sightseeing highlights and viewpoints along our return travel route." badgeColor="bg-sky-50 border-sky-200 text-sky-900" />
       <EventCard time="Transit Stop" title="Refreshment Point Stop ☕" description="A quick 10-minute break at Udupi Hotel." badgeColor="bg-stone-100 border-stone-200 text-stone-600" />
       <EventCard time="7:00 PM - 8:00 PM" title="Dinner at Mysore Railway Station 🍱" description="Pre-boarding dinner stop arranged at Adyar Ananda Bhavan (A2B)." badgeColor="bg-rose-50 border-rose-200 text-rose-900" />

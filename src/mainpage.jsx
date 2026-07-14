@@ -49,6 +49,8 @@ export default function ItineraryApp() {
   const [passengerDataOnward, setPassengerDataOnward] = useState([]);
   const [passengerDataReturn, setPassengerDataReturn] = useState([]);
   const [carpoolData, setCarpoolData] = useState([]);
+  const [qStartRoomData, setQStartRoomData] = useState([]); // State for Q Start Rooms
+  const [wildPlanetRoomData, setWildPlanetRoomData] = useState([]); // State for Wild Planet Rooms
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -146,16 +148,70 @@ export default function ItineraryApp() {
         });
     };
 
+    const fetchRoomAllocationData = (filePath) => {
+      return fetch(filePath)
+        .then((res) => {
+          if (!res.ok) throw new Error(`Asset not resolved at path: ${filePath}`);
+          return res.arrayBuffer();
+        })
+        .then((buffer) => {
+          const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const rawRows = XLSX.utils.sheet_to_json(worksheet, { defval: "", blankrows: true });
+
+          let processedGroups = [];
+          let currentRoomIndex = 0;
+          let isNextPersonLeader = true;
+
+          rawRows.forEach((row) => {
+            let roomNumber = '';
+            let name = '';
+
+            Object.keys(row).forEach(key => {
+              const normKey = key.trim().toLowerCase();
+              if (normKey.includes('room') || normKey.includes('no')) roomNumber = String(row[key]).trim();
+              if (normKey === 'name') name = String(row[key]).trim();
+            });
+
+            const isRowBlank = name.replace(/\s+/g, '') === '' && roomNumber.replace(/\s+/g, '') === '';
+
+            if (isRowBlank) {
+              if (!isNextPersonLeader) { 
+                currentRoomIndex++;     
+                isNextPersonLeader = true; 
+              }
+              return; 
+            }
+
+            processedGroups.push({
+              name,
+              roomLabel: roomNumber || 'TBD',
+              groupIndex: currentRoomIndex,    
+              isRoomPrimary: isNextPersonLeader 
+            });
+
+            isNextPersonLeader = false;
+          });
+
+          return processedGroups;
+        });
+    };
+
     // 3. FIRE ALL REQUESTS CONCURRENTLY
     Promise.all([
       fetchAndParseExcel('/files/ChennaiToMysore.xlsx'),
       fetchAndParseExcel('/files/MysoreToChennai.xlsx'),
-      fetchCarpoolData('/files/TransitGroups.xlsx').catch(() => [])
+      fetchCarpoolData('/files/TransitGroups.xlsx').catch(() => []),
+      fetchRoomAllocationData('/files/QStartRooms.xlsx').catch(() => []),
+      fetchRoomAllocationData('/files/WildPlanetRooms.xlsx').catch(() => [])
     ])
-      .then(([onwardData, returnData, carpoolDataResult]) => {
+      .then(([onwardData, returnData, carpoolDataResult, qStartRooms, wildPlanetRooms]) => {
         setPassengerDataOnward(onwardData);
         setPassengerDataReturn(returnData);
         setCarpoolData(carpoolDataResult); 
+        setQStartRoomData(qStartRooms);         // Add state hook for this
+        setWildPlanetRoomData(wildPlanetRooms);
         setIsLoading(false);
       })
       .catch((err) => {
@@ -201,7 +257,13 @@ export default function ItineraryApp() {
           <Day1Section passengers={passengerDataOnward} groups={carpoolData} loading={isLoading} />
         )}
         
-        {(activeDay === 'all' || activeDay === 'day2') && <Day2Section />}
+        {(activeDay === 'all' || activeDay === 'day2') && (
+  <Day2Section 
+    qStartRooms={qStartRoomData} 
+    wildPlanetRooms={wildPlanetRoomData} 
+    loading={isLoading} 
+  />
+)}
         
         {(activeDay === 'all' || activeDay === 'day3') && <Day3Section />}
         
@@ -210,7 +272,7 @@ export default function ItineraryApp() {
         )}
       </main>
       {/* 🟢 PASTE THE STICKY EMERGENCY CONTACT FOOTER HERE */}
-      <footer className="fixed max-w-md mx-auto bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-stone-200 py-3 px-4 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+      <footer className="fixed max-w-md mx-auto bottom-0 left-0 right-0 z-50 rounded-t-xl bg-white/95 backdrop-blur-md border-t border-stone-200 py-3 px-4 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
         <div className="max-w-md mx-auto space-y-3">
           
           {/* Main Footer Row */}
